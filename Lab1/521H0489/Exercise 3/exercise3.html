@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+    <title>Exercise 3 - Lab 1</title>
+</head>
+<body>
+    <div class="container text-center">
+        <h1 class = "m-5">Exercise generate image automatically by Ajax</h1>
+        <form class="form-horizontal">
+            <div class="input-group">
+                <input type="text" id="url" class="form-control m-2" placeholder="Enter URL">
+            </div>
+            <div>
+                <button type="button" id="convention" class="convention btn btn-success ">View Image by conventional approach</button>
+                <button type="button" id="useAsync" class="useAsync btn btn-danger ">View Image by Async and Await</button>
+            </div>
+            <div class="form-group">
+                <a id="imageDownload" href="#" download="image.jpg">
+                    <img id="image" style="max-width: 100%; margin-top: 16px" src="">
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const url = document.getElementById("url")
+        const btnConvention = document.getElementById('convention')
+        const btnUseAsync = document.getElementById('useAsync')
+        const imageDownload = document.getElementById("imageDownload")
+        const img = document.getElementById("image")
+        
+        btnConvention.addEventListener("click", () => {
+            console.log("Using conventional approach.")
+            let link = url.value;
+            url.value = '';
+
+            loadImg(link).then(blob => {
+                let object = URL.createObjectURL(blob);
+                img.src = object;
+                imageDownload.href = object;
+            }).catch(e => console.log(e));
+        });
+
+        btnUseAsync.addEventListener("click", async () => {
+            console.log("Using async and await in conjunction with try/catch.")
+            let link = url.value;
+            url.value = '';
+            try{
+                let blob = await loadImg(link);
+                let object = URL.createObjectURL(blob);
+                img.src = object;
+                imageDownload.href = object;
+            }catch(e){
+                console.log(e);
+            }         
+        });
+
+        function loadImg(url){
+            return new Promise((resolve, reject) => {
+                let xhr = new XMLHttpRequest();
+                xhr.responseType = 'blob';
+                xhr.open('GET', url, true);
+                xhr.onload = () => {
+                    if (xhr.readyState === 4 && xhr.status === 200){
+                        let object = URL.createObjectURL(xhr.response);
+                        img.src = object;
+                        imageDownload.href = object;
+                        
+                        resolve(xhr.response);
+                    }
+                    else reject(`Error with status != 200 (${xhr.status}) or readyState != 4 (${xhr.readyState}) `);
+                }
+                xhr.onerror = e => reject(e);
+                xhr.send(); 
+            });
+        }
+        </script>
+</body>
+</html>

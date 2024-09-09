@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Login</title>
+</head>
+<body>
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-md-8">
+          <h2 class="m-5">LOGIN</h2>
+          <form novalidate action="/login" method="post">
+              <div class="form-group mb-3">
+                <label for="inputEmail" class="form-label">Email:</label>
+                <input value="<%= email %>" type="email" class="form-control" id="inputEmail" name="inputEmail" placeholder="Input Email">
+              </div>
+              <div class="form-group mb-3">
+                <label for="inputPassword" class="form-label">Password:</label>
+                <input value="<%= password %>" type="password" class="form-control" id="inputPassword" name="inputPassword" placeholder="Input Password">
+              </div>
+              <% if(locals.errorMessage) {%>
+                <div class="alert alert-danger">
+                  <%= errorMessage %>
+                </div>
+              <% } %>
+              <button type="submit" class="btn btn-success">LOGIN</button>
+            </form>
+        </div>
+      </div>
+    </div>
+</body>
+</html>

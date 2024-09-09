@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Danh sách người dùng</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css    ">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"
+        integrity="sha512-zoJXRvW2gC8Z0Xo3lBbao5+AS3g6YWr5ztKqaicua11xHo+AvE1b0lT9ODgrHTmNUxeCw0Ry4BGRYZfXu70weg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        .user {
+            display: flex;
+            align-items: center;
+            padding: 12px 24px;
+            cursor: pointer;
+        }
+
+        .user:nth-child(odd) {
+            background-color: #F4F5F7;
+        }
+
+        .user:hover {
+            background-color: #E6EFFF;
+            transition: 0.3s;
+        }
+
+        .avatar {
+            font-weight: bold;
+            font-size: 1.5rem;
+            background-color: deepskyblue;
+            width: 50px;
+            height: 50px;
+            margin-right: 16px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white
+        }
+
+        .user-info {
+            height: 50px;
+            flex-grow: 1;
+        }
+
+        .user-name {
+            font-size: 1.1rem;
+        }
+
+        .user-info .online {
+            font-size: 0.9rem;
+            color: rgb(99, 99, 99)
+        }
+
+        .user .status {
+            width: 90px;
+            text-align: center;
+        }
+
+        .user:hover {
+            background-color: #E6EFFF;
+        }
+
+        .user:hover .avatar {
+            background-color: rgb(7, 142, 204);
+            transition: 0.3s;
+        }
+
+        .user:hover .user-name {
+            font-weight: 450;
+            transition: 0.3s;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-7">
+                <div class="rounded border mt-5 mb-3">
+                    <h4 class="text-primary text-center my-5">Danh sách người dùng trực tuyến</h4>
+                    <p style="padding: 0 24px">Số người online: <strong id="online-count"
+                            class="badge badge-danger badge-pill"></strong>
+                    </p>
+                    <div id="users-list" class="people">
+
+                    </div>
+                </div>
+                <p class="small">Danh sách này cần được cập nhật tự động mỗi khi có người dùng đăng nhập hoặc đăng
+                    xuất/thoát.
+                    Ngoài ra trạng thái của mỗi người dùng cũng cần được cập nhật mỗi khi họ tham gia hoặc rời một cuộc
+                    trò
+                    chuyện.</p>
+                <p class="small">Để cho đơn giản, trang web chỉ cần hỗ trợ với mỗi người vào một thời điểm, không thể
+                    chat với
+                    người có trạng thái là <strong>đang bận</strong>.</p>
+            </div>
+        </div>
+
+        <div id="online-notification" class="alert alert-success d-inline position-fixed small"
+            style="bottom: 20px; left: 20px">
+            <strong></strong> vừa mới online
+        </div>
+        <div id="offline-notification" class="alert alert-danger d-inline position-fixed small"
+            style="bottom: 20px; right: 20px">
+            <strong></strong> đã thoát khỏi ứng dụng
+        </div>
+
+        <script>
+            let socket;
+            let username;
+            let onlineUsers = []
+
+            window.onload = () => {
+                socket = io();
+                socket.on('connect', handlerConnectionSuccess)
+                socket.on('disconnect', () => console.log("Lost connection Successfully"))
+                socket.on('list-users', handlerUserList)
+                socket.on('new-user', handlerNewUser)
+                socket.on('user-leave', handleUserLeave)
+                socket.on('register-name', handlerRegisterUsername)
+
+                $('#online-notification').fadeTo(10, 0)
+                $('#offline-notification').fadeTo(10, 0)
+            }
+
+            function handlerConnectionSuccess() {
+                console.log(`Connection Successfully with id ${socket.id}`)
+                setTimeout(() => {
+                    username = sessionStorage.getItem('username')
+                    if (username) {
+                        console.log('Username is read from session storage');
+                    }
+                    if (!username) {
+                        username = prompt('Enter username')
+                        sessionStorage.setItem('username', username)
+                    }
+                    socket.emit('register-name', username)
+                }, 500)
+            }
+
+            function handlerUserList(users) {
+                console.log("List of users")
+                users.forEach(u => {
+                    console.log(u)
+                    if (u.id !== socket.id) {
+                        onlineUsers.push(u)
+                        displayUser(u)
+                    }
+                })
+            }
+
+            function handlerNewUser(user) {
+                onlineUsers.push(user)
+                console.log("New user connects")
+                console.log(user)
+            }
+
+            function handleUserLeave(id) {
+                let user = onlineUsers.find(u => u.id === id)
+
+                onlineUsers = onlineUsers.filter(u => u.id !== id)
+                console.log(`User ${id} exited`)
+                removeUser(id)
+                notifyOffline(user.username)
+            }
+
+            function handlerRegisterUsername(data) {
+                let { id, username } = data
+                let user = onlineUsers.find(u => u.id === id)
+                if (!user) {
+                    return console.log("User not found")
+                }
+                user.username = username
+                console.log(`Client ${id} registered with name ${username}`)
+
+                displayUser(user)
+                notifyOnline(username)
+            }
+
+            function displayUser(user) {
+                let status = user.free ? '<div class="badge badge-success badge-pill">Online</div>' : '<div class="badge badge-warning badge-pill">Busy</div>'
+                let userDiv = $(`
+                        <div id="${user.id}" class="user">
+                            <div class="avatar">${user.username[0]}</div>
+                            <div class="user-info">
+                                <div class="user-name">${user.username}</div>
+                                <div class="online">Truy cập lúc: ${user.loginAt}'</div>
+                            </div>
+                            <div class="status">
+                                ${status}
+                            </div>
+                        </div>`)
+                $('#users-list').append(userDiv)
+
+                $('#online-count').html($('#users-list .user').length)
+            }
+
+            function removeUser(id) {
+                $(`#${id}`).remove();
+                $('#online-count').html($('#users-list .user').length)
+            }
+
+            function notifyOnline(username) {
+                $('#online-notification strong').html(username)
+                $('#online-notification').fadeTo(2000, 1)
+                setTimeout(() => {
+                    $('#online-notification').fadeTo(2000, 0)
+                }, 4000);
+            }
+
+            function notifyOffline(username) {
+                $('#offline-notification strong').html(username)
+                $('#offline-notification').fadeTo(2000, 1)
+                setTimeout(() => {
+                    $('#offline-notification').fadeTo(2000, 0)
+                }, 4000);
+            } 
+        </script>
+</body>
+
+</html>
